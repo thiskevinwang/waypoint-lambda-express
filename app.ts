@@ -1,5 +1,6 @@
 import express from 'express'
 import type { RequestHandler, ErrorRequestHandler } from 'express'
+import morgan from "morgan"
 
 import { pool } from './db'
 import { runMigrations } from './migration'
@@ -18,6 +19,7 @@ envRouter.get('/foobar', (async (req, res) => {
 
 export const createApp = () => {
   const app = express()
+  app.use(morgan('dev'))
   app.post('/_migrations', (async (req, res) => {
     const auth = req.headers.authorization
     if (auth !== 'some_secret_password') {
