@@ -1,70 +1,5 @@
 project = "wp-nodejs-express"
 
-
-app "wp-nodejs-express" {
-  build {
-    use "docker" {
-      // buildkit = true
-      // platform = "linux/amd64"
-
-      // see builtin/docker/builder.go 
-      build_args = {
-        VERSION = var.version
-      }
-    }
-    // hook {
-    //   when       = "before"
-    //   command    = ["./audit-log.sh", "build starting"]
-    //   on_failure = "continue"
-    // }
-    // hook {
-    //   when    = "after"
-    //   command = ["./audit-log.sh", "build finished"]
-    // }
-
-    registry {
-      use "aws-ecr" {
-        region     = var.region
-        repository = "wp-nodejs-express"
-        tag        = var.tag
-      }
-    }
-  }
-
-  deploy {
-    # lambda Target Group name format
-    # "${app}-${somerandomid}"
-    use "aws-lambda" {
-      region = var.region
-      memory = 256
-      // architecture = var.architecture
-      timeout = 30
-    }
-    // hook {
-    //   when       = "before"
-    //   command    = ["./audit-log.sh", "deploy starting"]
-    //   on_failure = "continue"
-    // }
-    // hook {
-    //   when    = "after"
-    //   command = ["./audit-log.sh", "deploy finished"]
-    // }
-  }
-
-  release {
-    use "aws-alb" {
-      // name = "${substr(var.tag, 0, 7)}-${var.project}"
-      // port = 80
-      // certificate (ARN)
-      // zone_id (Route53 zone)
-      zone_id     = var.r53_zone_id
-      domain_name = "${var.sub_domain}.${var.domain_name}"
-      // domain_name (Route53 domain)
-      // listenerARN
-    }
-  }
-}
-
 variable "version" {
   default     = "latest"
   type        = string
@@ -112,4 +47,43 @@ variable "r53_zone_id" {
   default     = "r53_zone_id"
   type        = string
   description = "Route53 hosted zone id"
+}
+
+app "wp-nodejs-express" {
+  build {
+    use "docker" {
+      // buildkit = true
+      // platform = "linux/amd64"
+
+      // see builtin/docker/builder.go 
+      build_args = {
+        VERSION = var.version
+      }
+    }
+
+    registry {
+      use "aws-ecr" {
+        region     = var.region
+        repository = "wp-nodejs-express"
+        tag        = var.tag
+      }
+    }
+  }
+
+  deploy {
+    use "aws-lambda" {
+      region = var.region
+      memory = 512
+      timeout = 30
+    }
+  }
+
+  release {
+    use "aws-alb" {
+      // name = "${substr(var.tag, 0, 7)}-${var.project}"
+      // port = 80
+      zone_id     = var.r53_zone_id
+      domain_name = "${var.sub_domain}.${var.domain_name}"
+    }
+  }
 }
