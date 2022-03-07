@@ -1,3 +1,5 @@
+import 'dotenv/config'
+
 import { Pool } from 'pg'
 import type { PoolConfig } from 'pg'
 
