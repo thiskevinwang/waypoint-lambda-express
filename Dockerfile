@@ -7,7 +7,7 @@ COPY tsconfig*.json ./
 COPY ./*.ts ./
 RUN npm install
 # output to ./out
-RUN npm run tsc
+RUN npm run build
 
 #=================================
 
