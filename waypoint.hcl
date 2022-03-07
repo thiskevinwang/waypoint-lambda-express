@@ -82,8 +82,8 @@ app "wp-nodejs-express" {
     use "aws-alb" {
       // name = "${substr(var.tag, 0, 7)}-${var.project}"
       // port = 80
-      zone_id     = var.r53_zone_id
-      domain_name = "${var.sub_domain}.${var.domain_name}"
+      // zone_id     = var.r53_zone_id
+      // domain_name = "${var.sub_domain}.${var.domain_name}"
     }
   }
 }

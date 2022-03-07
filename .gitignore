@@ -7,3 +7,7 @@ loop.sh
 notes.md
 install.txt
 output.txt
+
+# Waypoint?
+data.db
+waypoint-restore.db.lock
