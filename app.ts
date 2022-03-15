@@ -2,6 +2,7 @@ import express from 'express'
 import type { RequestHandler, ErrorRequestHandler } from 'express'
 import morgan from "morgan"
 
+
 import { pool } from './db'
 import { runMigrations } from './migration'
 
@@ -17,9 +18,13 @@ envRouter.get('/foobar', (async (req, res) => {
   res.status(200).send(process.env.FOOBAR)
 }) as RequestHandler)
 
+const loggingMiddleware = morgan(process.env.NODE_ENV === "production" ? "short" : "dev" )
+
 export const createApp = () => {
   const app = express()
-  app.use(morgan('dev'))
+
+  app.use(loggingMiddleware)
+
   app.post('/_migrations', (async (req, res) => {
     const auth = req.headers.authorization
     if (auth !== 'some_secret_password') {
@@ -45,6 +50,7 @@ export const createApp = () => {
 
   app.get('/health', (async (req, res) => {
     let client
+    
     try {
       client = await pool.connect()
       const queryResult = await client.query(`SELECT t1.datname AS db_name,  
@@ -53,9 +59,13 @@ export const createApp = () => {
   ORDER BY pg_database_size(t1.datname) DESC;`)
       res.status(200).send(queryResult.rows)
     } catch (err: any) {
-      res
+      // crude but reasonable way to check for a connection timeout      
+      if (err.message?.includes('timeout')) {
+        return res.status(408).send({ message: 'timeout' })
+      }
+      return res
         .status(500)
-        .send({ error: 'borked', errno: err.errno, code: err.code })
+        .send({ error: 'borked', errno: err.errno, code: err.code, message: err.message })
     } finally {
       if (client) {
         client.release(true)

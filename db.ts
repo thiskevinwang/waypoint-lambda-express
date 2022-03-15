@@ -11,8 +11,11 @@ const config: PoolConfig = {
   host: process.env.DB_HOST,
   idleTimeoutMillis: 120_000,
   // lambda timeout is 30
-  connectionTimeoutMillis: 34_000,
-  ssl: { rejectUnauthorized: false },
+  connectionTimeoutMillis: 16_000,
+  ssl:
+    process.env.NODE === 'production'
+      ? { rejectUnauthorized: false }
+      : undefined,
 }
 
 export const pool = new Pool(config)
