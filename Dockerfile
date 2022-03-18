@@ -16,8 +16,10 @@ WORKDIR /usr/app
 # Copy the compiled files to the builder
 COPY --from=COMPILER /usr/app/package*.json ./
 COPY --from=COMPILER /usr/app/out ./
-# Copy migrations
+
+# Copy files/folders that aren't compiled by typescript
 COPY migrations ./migrations/
+COPY ./swagger.yaml ./
 
 RUN npm install npm@latest -g
 RUN npm install --only=production

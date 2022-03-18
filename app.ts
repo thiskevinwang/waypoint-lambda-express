@@ -1,6 +1,7 @@
 import express from 'express'
 import type { RequestHandler, ErrorRequestHandler } from 'express'
 import morgan from "morgan"
+import redoc from 'redoc-express'
 
 
 import { pool } from './db'
@@ -24,6 +25,21 @@ export const createApp = () => {
   const app = express()
 
   app.use(loggingMiddleware)
+
+  // serve your swagger.json file
+  app.get('/docs/swagger.yaml', (req, res) => {
+    res.sendFile('swagger.yaml', { root: '.' });
+  });
+  
+  // define title and specUrl location
+  // serve redoc
+  app.get(
+    '/docs',
+    redoc({
+      title: 'API Docs',
+      specUrl: '/docs/swagger.yaml'
+    })
+  );
 
   app.post('/_migrations', (async (req, res) => {
     const auth = req.headers.authorization
