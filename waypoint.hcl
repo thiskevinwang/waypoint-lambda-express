@@ -10,7 +10,7 @@ variable "tag" {
   // default     = gitrefpretty()
   default     = "latest"
   type        = string
-  description = "A tag"
+  description = "A tag for the Docker image"
 }
 
 variable "region" {
@@ -58,6 +58,7 @@ app "wp-nodejs-express" {
       // see builtin/docker/builder.go 
       build_args = {
         VERSION = var.version
+        TAG = var.tag
       }
     }
 

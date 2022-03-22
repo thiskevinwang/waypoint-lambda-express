@@ -1,5 +1,5 @@
 import serverlessExpress from '@vendia/serverless-express'
-import type { ALBEvent, Context, APIGatewayEvent} from 'aws-lambda'
+import type { ALBEvent, Context, APIGatewayEvent } from 'aws-lambda'
 
 import { createApp } from './app'
 

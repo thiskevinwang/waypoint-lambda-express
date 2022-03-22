@@ -1,47 +1,61 @@
 import express from 'express'
+import type { IncomingMessage, ServerResponse } from 'http'
 import type { RequestHandler, ErrorRequestHandler } from 'express'
-import morgan from "morgan"
+import morgan from 'morgan'
 import redoc from 'redoc-express'
-
 
 import { pool } from './db'
 import { runMigrations } from './migration'
 
+// This is copied from `morgan`
+type Handler<Request extends IncomingMessage, Response extends ServerResponse> = (
+  req: Request,
+  res: Response,
+  callback: (err?: Error) => void
+) => void
+
 const envRouter = express.Router()
-envRouter.get('/version', ((req, res) => {
-  res.status(200).send(process.env.VERSION)
-}) as RequestHandler)
+const envController: Record<string, RequestHandler> = {
+  getVersion: async (req, res) => {
+    res.status(200).send(process.env.VERSION)
+  },
+  getSubdomain: async (req, res) => {
+    res.status(200).send(process.env.SUBDOMAIN)
+  },
+  getFoobar: async (req, res) => {
+    res.status(200).send(process.env.FOOBAR)
+  },
+}
+envRouter.get('/version', envController.getVersion)
+envRouter.get('/subdomain', envController.getSubdomain)
+envRouter.get('/foobar', envController.getFoobar)
 
-envRouter.get('/subdomain', (async (req, res) => {
-  res.status(200).send(process.env.SUBDOMAIN)
-}) as RequestHandler)
-envRouter.get('/foobar', (async (req, res) => {
-  res.status(200).send(process.env.FOOBAR)
-}) as RequestHandler)
-
-const loggingMiddleware = morgan(process.env.NODE_ENV === "production" ? "short" : "dev" )
+const loggingMiddleware = morgan(process.env.NODE_ENV === 'production' ? 'short' : 'dev')
+const cacheHeaderMiddleware: Handler<IncomingMessage, ServerResponse> = (req, res, next) => {
+  res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300, stale-while-revalidate=60')
+  next()
+}
 
 export const createApp = () => {
   const app = express()
-
-  app.use(loggingMiddleware)
+  // middleware
+  app.use(loggingMiddleware, cacheHeaderMiddleware)
 
   // serve your swagger.json file
   app.get('/docs/swagger.yaml', (req, res) => {
-    res.sendFile('swagger.yaml', { root: '.' });
-  });
-  
+    res.sendFile('swagger.yaml', { root: '.' })
+  })
+
   // define title and specUrl location
   // serve redoc
-  app.get(
-    '/docs',
+  app.get('/docs', (req, res) => {
     redoc({
       title: 'API Docs',
-      specUrl: '/docs/swagger.yaml'
-    })
-  );
+      specUrl: '/docs/swagger.yaml',
+    })(req, res)
+  })
 
-  app.post('/_migrations', (async (req, res) => {
+  app.post('/_migrations', async (req, res) => {
     const auth = req.headers.authorization
     if (auth !== 'some_secret_password') {
       res.status(401).send('Unauthorized')
@@ -52,21 +66,19 @@ export const createApp = () => {
       await runMigrations()
       res.status(200).send({ message: 'migrations ran successfully' })
     } catch (err: any) {
-      res
-        .status(500)
-        .send({ message: `migrations failed: ${err.message}`, error: err })
+      res.status(500).send({ message: `migrations failed: ${err.message}`, error: err })
     }
-  }) as RequestHandler)
+  })
 
   app.use('/env', envRouter)
 
-  app.get('/', ((req, res) => {
+  app.get('/', (req, res) => {
     res.status(200).send('OK')
-  }) as RequestHandler)
+  })
 
-  app.get('/health', (async (req, res) => {
+  app.get('/health', async (req, res) => {
     let client
-    
+
     try {
       client = await pool.connect()
       const queryResult = await client.query(`SELECT t1.datname AS db_name,  
@@ -75,24 +87,29 @@ export const createApp = () => {
   ORDER BY pg_database_size(t1.datname) DESC;`)
       res.status(200).send(queryResult.rows)
     } catch (err: any) {
-      // crude but reasonable way to check for a connection timeout      
+      // crude but reasonable way to check for a connection timeout
       if (err.message?.includes('timeout')) {
         return res.status(408).send({ message: 'timeout' })
       }
-      return res
-        .status(500)
-        .send({ error: 'borked', errno: err.errno, code: err.code, message: err.message })
+      return res.status(500).send({
+        error: 'borked',
+        errno: err.errno,
+        code: err.code,
+        message: err.message,
+      })
     } finally {
       if (client) {
         client.release(true)
       }
     }
-  }) as RequestHandler)
+  })
 
   // default 404 handler
-  app.use(((req, res, next) => {
-    res.status(404).send('Not found')
-  }) as RequestHandler)
+  app.use((req, res, next) => {
+    res
+      .status(404)
+      .send({ message: 'Not found', path: req.path, method: req.method, query: req.query })
+  })
 
   // default 500
   app.use(((err, req, res, next) => {
